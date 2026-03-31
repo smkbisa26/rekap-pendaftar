@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard SPMB 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: #ffffff; min-height: 100vh; }
+    .bg-pattern {
+      background-image: 
+        radial-gradient(at 40% 20%, rgba(102, 126, 234, 0.05) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, rgba(118, 75, 162, 0.05) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
+    }
+    .glass-card { 
+      background: white; border-radius: 20px; border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 15px -3px rgba(0,0,0,0.03);
+      transition: all 0.3s ease;
+    }
+    .glass-card:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); }
+    .stat-card {
+      background: white; border-radius: 20px; border: 2px solid #f1f5f9;
+      transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+    .stat-card.total::before { background: linear-gradient(90deg, #667eea, #764ba2); }
+    .stat-card.diterima::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .stat-card.tidak::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .stat-card.pending::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .stat-card.male::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+    .stat-card.female::before { background: linear-gradient(90deg, #ec4899, #f472b6); }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); border-color: transparent; }
+    .icon-wrapper {
+      width: 56px; height: 56px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+    }
+    .icon-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .icon-diterima { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); color: white; }
+    .icon-tidak { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); color: white; }
+    .icon-pending { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: white; }
+    .icon-male { background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%); color: white; }
+    .icon-female { background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); color: white; }
+    .chart-container { position: relative; height: 300px; }
+    .loading-spinner {
+      border: 3px solid #f3f4f6; border-top: 3px solid #667eea;
+      border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .smp-item { transition: all 0.3s ease; }
+    .smp-item:hover { transform: translateX(5px); background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); }
+    .rank-number {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.875rem;
+    }
+    .rank-1 { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; }
+    .rank-2 { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); color: white; }
+    .rank-3 { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); color: white; }
+    .rank-4 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .rank-5 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+    .alert-box {
+      padding: 16px; border-radius: 12px; margin-bottom: 16px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e; }
+    .alert-error { background: #fee2e2; border-left: 4px solid #ef4444; color: #991b1b; }
+    .alert-success { background: #d1fae5; border-left: 4px solid #10b981; color: #065f46; }
+    .debug-panel {
+      background: #1e293b; color: #e2e8f0; padding: 12px;
+      border-radius: 12px; font-family: monospace; font-size: 0.75rem;
+      max-height: 200px; overflow-y: auto; margin-top: 8px;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gold-gradient { 
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+      border: 2px solid #fbbf24;
+    }
+  </style>
+</head>
+<body class="bg-pattern p-4 md:p-8">
+
+  <div class="max-w-[1700px] mx-auto">
+    <div id="alertBox" class="hidden"></div>
+
+    <!-- Header -->
+    <div class="glass-card p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="text-center md:text-left">
+        <div class="flex items-center gap-3 justify-center md:justify-start">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+            <i class="fas fa-chart-line text-white text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">DASHBOARD SPMB</h1>
+            <p class="text-sm font-semibold text-slate-500">Sistem Penerimaan Murid Baru 2026</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="loadData()" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 hover:shadow-lg transition-all">
+          <i class="fas fa-sync-alt" id="syncIcon"></i> Refresh
+        </button>
+        <button onclick="toggleDebug()" class="bg-slate-100 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all">
+          <i class="fas fa-bug"></i> Debug
+        </button>
+      </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div id="debugPanel" class="hidden glass-card p-4 mb-6">
+      <h4 class="text-sm font-bold text-slate-700 mb-2"><i class="fas fa-terminal mr-2"></i>Debug Console</h4>
+      <div id="debugOutput" class="debug-panel"></div>
+      <button onclick="clearDebug()" class="mt-2 text-xs text-slate-500 hover:text-slate-700">Clear Log</button>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="mb-8">
+      <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2 px-2">
+        <i class="fas fa-clipboard-check text-blue-600"></i> Status Pendaftaran
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card total glass-card p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Pendaftar</p>
+              <h2 id="grandTotal" class="text-4xl font-black text-slate-800">0</h2>
+              <p class="text-xs text-slate-400 mt-1">Semua Pendaftaran</p>
+            </div>
+            <div class="icon-wrapper icon-total"><i class="fas fa-users"></i></div>
+          </div>
+        </div>
+        <div class="stat-card diterima glass-card p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Diterima</p>
+              <h2 id="totalDiterima" class="text-4xl font-black text-emerald-600">0</h2>
+              <span class="badge badge-success mt-2"><i class="fas fa-check mr-1"></i> Lulus</span>
+            </div>
+            <div class="icon-wrapper icon-diterima"><i class="fas fa-check-circle"></i></div>
+          </div>
+        </div>
+        <div class="stat-card tidak glass-card p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tidak Diterima</p>
+              <h2 id="totalTidak" class="text-4xl font-black text-red-600">0</h2>
+              <span class="badge badge-danger mt-2"><i class="fas fa-times mr-1"></i> Tidak Lulus</span>
+            </div>
+            <div class="icon-wrapper icon-tidak"><i class="fas fa-times-circle"></i></div>
+          </div>
+        </div>
+        <div class="stat-card pending glass-card p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menunggu Verifikasi</p>
+              <h2 id="totalPending" class="text-4xl font-black text-amber-600">0</h2>
+              <span class="badge badge-warning mt-2"><i class="fas fa-clock mr-1"></i> Pending</span>
+            </div>
+            <div class="icon-wrapper icon-pending"><i class="fas fa-hourglass-half"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gender Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+      <div class="stat-card male glass-card p-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Laki-Laki</p>
+            <h2 id="grandL" class="text-5xl font-black text-cyan-600">0</h2>
+            <p class="text-xs text-slate-400 mt-2"><i class="fas fa-mars mr-1"></i> Siswa</p>
+          </div>
+          <div class="icon-wrapper icon-male"><i class="fas fa-mars text-2xl"></i></div>
+        </div>
+      </div>
+      <div class="stat-card female glass-card p-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Perempuan</p>
+            <h2 id="grandP" class="text-5xl font-black text-pink-600">0</h2>
+            <p class="text-xs text-slate-400 mt-2"><i class="fas fa-venus mr-1"></i> Siswi</p>
+          </div>
+          <div class="icon-wrapper icon-female"><i class="fas fa-venus text-2xl"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking Jurusan -->
+    <div class="mb-10">
+      <h3 class="text-sm font-bold text-slate-700 mb-6 px-2 flex items-center gap-2">
+        <i class="fas fa-trophy text-amber-500"></i> Ranking Jurusan Terpopuler
+      </h3>
+      <div id="jurusanRankContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div class="glass-card p-8 lg:col-span-2">
+        <h3 class="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
+          <i class="fas fa-chart-bar text-indigo-500"></i> Distribusi Gender Per Jurusan
+        </h3>
+        <div class="chart-container"><canvas id="chartSplit"></canvas></div>
+      </div>
+      <div class="glass-card p-8">
+        <h3 class="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
+          <i class="fas fa-chart-pie text-emerald-500"></i> Status Pendaftaran
+        </h3>
+        <div class="chart-container"><canvas id="chartStatus"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Agama dan SMP -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div class="glass-card p-8">
+        <h3 class="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
+          <i class="fas fa-mosque text-purple-500"></i> Distribusi Agama
+        </h3>
+        <div class="chart-container"><canvas id="chartAgama"></canvas></div>
+      </div>
+      <div class="glass-card p-8">
+        <h3 class="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
+          <i class="fas fa-school text-orange-500"></i> 5 Asal SMP/MTs Terbanyak
+        </h3>
+        <div id="topSMPContainer" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center mt-10 mb-4">
+      <p class="text-slate-500 text-sm font-semibold">© 2026 Dashboard SPMB. #Ally Raring: <span id="lastUpdate">-</span></p>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="loading-spinner mx-auto mb-4"></div>
+        <p class="text-slate-600 font-semibold">Memuat Data...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ URL WEB APP ANDA SUDAH DIPASANG
+    const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz1h0QEG8ik10RRMg_rAEa2sgXxI3uwg1o4RM0a8sV2rA5H5CEV0tF3icF-4kkZPs1Lvw/exec';
+    
+    let charts = {};
+    let debugMode = false;
+    let useSampleData = false;
+
+    function log(msg, type = 'info') {
+      if (!debugMode) return;
+      const output = document.getElementById('debugOutput');
+      const time = new Date().toLocaleTimeString();
+      const colors = { info: '#60a5fa', success: '#34d399', error: '#f87171', warn: '#fbbf24' };
+      output.innerHTML += `<div style="color:${colors[type]}">[${time}] ${msg}</div>`;
+      output.scrollTop = output.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+
+    function showAlert(message, type = 'error') {
+      const alertBox = document.getElementById('alertBox');
+      const icons = { error: 'fa-circle-exclamation', warning: 'fa-triangle-exclamation', success: 'fa-circle-check' };
+      const classes = { error: 'alert-error', warning: 'alert-warning', success: 'alert-success' };
+      
+      alertBox.className = `alert-box ${classes[type]}`;
+      alertBox.innerHTML = `
+        <i class="fas ${icons[type]} text-xl mt-0.5"></i>
+        <div>
+          <p class="font-bold">${type === 'error' ? 'Error' : type === 'warning' ? 'Peringatan' : 'Sukses'}</p>
+          <p class="text-sm">${message}</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="ml-auto text-lg hover:opacity-70">&times;</button>
+      `;
+      alertBox.classList.remove('hidden');
+    }
+
+    function initCharts() {
+      Chart.defaults.font.family = 'Plus Jakarta Sans';
+      Chart.defaults.color = '#64748b';
+      
+      const commonOptions = { 
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, font: { size: 11 } } } }
+      };
+
+      charts.split = new Chart(document.getElementById('chartSplit'), {
+        type: 'bar',
+        data: { labels: [], datasets: [
+          { label: 'Laki-Laki', backgroundColor: '#06b6d4', data: [], borderRadius: 8, barThickness: 30 },
+          { label: 'Perempuan', backgroundColor: '#ec4899', data: [], borderRadius: 8, barThickness: 30 }
+        ]},
+        options: { ...commonOptions, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } }
+      });
+
+      charts.status = new Chart(document.getElementById('chartStatus'), {
+        type: 'doughnut',
+        data: { labels: ['Diterima', 'Tidak Diterima', 'Pending'], datasets: [{ backgroundColor: ['#10b981', '#ef4444', '#f59e0b'], data: [0, 0, 0], borderWidth: 0 }] },
+        options: { ...commonOptions, cutout: '65%' }
+      });
+
+      charts.agama = new Chart(document.getElementById('chartAgama'), {
+        type: 'pie',
+        data: { labels: [], datasets: [{ backgroundColor: ['#667eea', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'], data: [], borderWidth: 2, borderColor: '#ffffff' }] },
+        options: { ...commonOptions }
+      });
+    }
+
+    function getSampleData() {
+      return {
+        total: 156, l: 89, p: 67, diterima: 45, tidakDiterima: 12, pending: 99,
+        jurusanData: {
+          'TITL': { total: 52, l: 31, p: 21, full: 'TITL-Teknik Instalasi Tenaga Listrik' },
+          'TKJ': { total: 48, l: 29, p: 19, full: 'TKJ-Teknik Komputer Jaringan' },
+          'RPL': { total: 35, l: 18, p: 17, full: 'RPL-Rekayasa Perangkat Lunak' }
+        },
+        agama: { 'Islam': 98, 'Kristen': 32, 'Katolik': 15, 'Hindu': 7, 'Buddha': 4 },
+        smp: {
+          'SMP Negeri 1 Kota': 34, 'SMP Islam Terpadu Al-Hikmah': 28,
+          'MTs Negeri 2 Kota': 22, 'SMP Muhammadiyah 3': 19, 'SMP Kristen Petra': 15
+        }
+      };
+    }
+
+    async function loadData(forceSample = false) {
+      const loading = document.getElementById('loadingState');
+      const icon = document.getElementById('syncIcon');
+      
+      loading.style.display = 'flex';
+      icon.classList.add('fa-spin');
+      
+      try {
+        if (forceSample || useSampleData) {
+          processData(getSampleData());
+          showAlert('Menggunakan data sample', 'warning');
+          return;
+        }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(SHEET_URL, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const result = await response.json();
+        
+        if (!result.success) throw new Error(result.error || 'Unknown error');
+        
+        processData(result.data);
+        document.getElementById('lastUpdate').innerText = new Date().toLocaleString('id-ID');
+        
+      } catch (error) {
+        console.error('Error:', error);
+        showAlert(`Gagal: ${error.message}<br><button onclick="loadData(true)" class="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs">Gunakan Sample</button>`, 'error');
+        setTimeout(() => { useSampleData = true; processData(getSampleData()); }, 3000);
+      } finally {
+        loading.style.display = 'none';
+        icon.classList.remove('fa-spin');
+      }
+    }
+
+    function processData(data) {
+      let total = 0, totalL = 0, totalP = 0;
+      let diterima = 0, tidakDiterima = 0, pending = 0;
+      const jurusanData = {}, agamaData = {}, smpData = {};
+
+      data.forEach(row => {
+        if (!row || Object.keys(row).length === 0) return;
+        total++;
+        
+        const gender = (row['Jenis Kelamin'] || '').toString().toUpperCase().trim();
+        if (['L', 'LAKI-LAKI', 'LAKI', 'PRIA'].includes(gender)) totalL++;
+        else if (['P', 'PEREMPUAN', 'WANITA'].includes(gender)) totalP++;
+        
+        const status = (row['Status'] || '').toString().toLowerCase().trim();
+        if (['diterima', 'lulus', 'accepted'].includes(status)) diterima++;
+        else if (['tidak diterima', 'ditolak', 'rejected'].includes(status)) tidakDiterima++;
+        else pending++;
+        
+        const jurusanFull = (row['Pilih Jurusan'] || 'Umum').toString().trim();
+        const jurusan = jurusanFull.split('-')[0] || jurusanFull;
+        if (!jurusanData[jurusan]) jurusanData[jurusan] = { total: 0, l: 0, p: 0, full: jurusanFull };
+        jurusanData[jurusan].total++;
+        jurusanData[jurusan].full = jurusanFull;
+        if (['L', 'LAKI-LAKI', 'LAKI', 'PRIA'].includes(gender)) jurusanData[jurusan].l++;
+        else jurusanData[jurusan].p++;
+        
+        const agama = (row['Agama'] || 'Lainnya').toString().trim() || 'Lainnya';
+        agamaData[agama] = (agamaData[agama] || 0) + 1;
+        
+        const smp = (row['Nama SMP/MTs'] || 'Tidak Diketahui').toString().trim();
+        smpData[smp] = (smpData[smp] || 0) + 1;
+      });
+
+      updateUI({ total, l: totalL, p: totalP, diterima, tidakDiterima, pending, jurusanData, agama: agamaData, smp: smpData });
+    }
+
+    function updateUI(data) {
+      animateValue('grandTotal', data.total);
+      animateValue('grandL', data.l);
+      animateValue('grandP', data.p);
+      animateValue('totalDiterima', data.diterima);
+      animateValue('totalTidak', data.tidakDiterima);
+      animateValue('totalPending', data.pending);
+
+      const sortedJurusan = Object.entries(data.jurusanData).sort((a, b) => b[1].total - a[1].total);
+      let rankHTML = '';
+      const medals = ['🥇', '🥈', '🥉'];
+      
+      sortedJurusan.forEach(([name, val], index) => {
+        const isTop = index === 0;
+        rankHTML += `
+          <div class="glass-card p-6 ${isTop ? 'gold-gradient' : ''} border-t-4 ${isTop ? 'border-amber-500' : 'border-blue-500'}">
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-black bg-slate-800 text-white px-3 py-1 rounded-full">${medals[index] || `#${index + 1}`} POSISI</span>
+              ${isTop ? '<i class="fas fa-crown text-amber-600"></i>' : ''}
+            </div>
+            <h4 class="text-sm font-bold text-slate-700 mb-3 uppercase leading-tight">${val.full || name}</h4>
+            <div class="flex items-baseline gap-2 mb-3">
+              <span class="text-3xl font-black text-slate-800">${val.total}</span>
+              <span class="text-xs font-semibold text-slate-500">Siswa</span>
+            </div>
+            <div class="flex gap-2">
+              <div class="flex-1 bg-cyan-50 px-3 py-2 rounded-lg text-center"><span class="text-xs font-bold text-cyan-700">L: ${val.l}</span></div>
+              <div class="flex-1 bg-pink-50 px-3 py-2 rounded-lg text-center"><span class="text-xs font-bold text-pink-700">P: ${val.p}</span></div>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById('jurusanRankContainer').innerHTML = rankHTML;
+
+      const sortedSMP = Object.entries(data.smp).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      let smpHTML = '';
+      const rankClasses = ['rank-1', 'rank-2', 'rank-3', 'rank-4', 'rank-5'];
+      
+      sortedSMP.forEach(([nama, jumlah], index) => {
+        const percentage = data.total > 0 ? ((jumlah / data.total) * 100).toFixed(1) : 0;
+        smpHTML += `
+          <div class="smp-item p-4 rounded-xl border border-slate-100 bg-white">
+            <div class="flex items-center gap-4">
+              <div class="rank-number ${rankClasses[index]}">${index + 1}</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold text-slate-700 truncate" title="${nama}">${nama}</p>
+                <p class="text-xs text-slate-400">${percentage}% dari total</p>
+              </div>
+              <div class="text-right">
+                <p class="text-2xl font-black gradient-text">${jumlah}</p>
+                <p class="text-xs text-slate-400">siswa</p>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById('topSMPContainer').innerHTML = smpHTML || '<p class="text-slate-400 text-sm">Tidak ada data SMP</p>';
+
+      if (charts.split) {
+        charts.split.data.labels = sortedJurusan.map(x => (x[1].full || x[0]).substring(0, 20));
+        charts.split.data.datasets[0].data = sortedJurusan.map(x => x[1].l);
+        charts.split.data.datasets[1].data = sortedJurusan.map(x => x[1].p);
+        charts.split.update();
+      }
+      if (charts.status) {
+        charts.status.data.datasets[0].data = [data.diterima, data.tidakDiterima, data.pending];
+        charts.status.update();
+      }
+      if (charts.agama) {
+        const sortedAgama = Object.entries(data.agama).sort((a,b) => b[1] - a[1]);
+        charts.agama.data.labels = sortedAgama.map(x => x[0]);
+        charts.agama.data.datasets[0].data = sortedAgama.map(x => x[1]);
+        charts.agama.update();
+      }
+    }
+
+    function animateValue(id, value) {
+      const obj = document.getElementById(id);
+      const start = parseInt(obj.innerText) || 0;
+      const duration = 1000;
+      const startTime = performance.now();
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        const current = Math.floor(start + (value - start) * easeOutQuart);
+        obj.innerText = current;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    function toggleDebug() {
+      debugMode = !debugMode;
+      document.getElementById('debugPanel').classList.toggle('hidden', !debugMode);
+    }
+
+    function clearDebug() {
+      document.getElementById('debugOutput').innerHTML = '';
+    }
+
+    window.onload = () => { initCharts(); loadData(); setInterval(loadData, 60000); };
+  </script>
+</body>
+</html>
